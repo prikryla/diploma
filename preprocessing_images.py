@@ -22,5 +22,3 @@ def preprocess_and_resize_png(image_path, target_size=(24, 24)):
     img_array = np.expand_dims(img_array, axis=0)
 
     return img_array
-
-preprocess_and_resize_png('0001.png')
