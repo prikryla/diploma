@@ -1,5 +1,6 @@
 from PIL import Image
 import numpy as np
+import psycopg2
 
 def preprocess_and_resize_png(image_path, target_size=(24, 24)):
     # Open and load the PNG image
@@ -22,3 +23,15 @@ def preprocess_and_resize_png(image_path, target_size=(24, 24)):
     img_array = np.expand_dims(img_array, axis=0)
 
     return img_array
+
+conn_params = {
+    'dbname': 'image_similarity',
+    'user': 'postgres',
+    'password': 'postgres',
+    'host': '127.0.0.1'
+}
+
+# Connect to the PostgreSQL database
+conn = psycopg2.connect(**conn_params)
+cur = conn.cursor()
+
