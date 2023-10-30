@@ -1,6 +1,8 @@
 from PIL import Image
 import numpy as np
 import psycopg2
+from pathlib import Path
+import os
 
 def preprocess_and_resize_png(image_path, target_size=(24, 24)):
     # Open and load the PNG image
@@ -22,8 +24,6 @@ def preprocess_and_resize_png(image_path, target_size=(24, 24)):
     # Expand dimensions to create a batch of one image
     img_array = np.expand_dims(img_array, axis=0)
 
-    return img_array
-
 conn_params = {
     'dbname': 'image_similarity',
     'user': 'postgres',
@@ -34,4 +34,15 @@ conn_params = {
 # Connect to the PostgreSQL database
 conn = psycopg2.connect(**conn_params)
 cur = conn.cursor()
+
+directory = Path('cifar10/test/airplane')
+image_files = list(directory.glob('*.png'))
+
+# Get the number of image files in the directory
+number_of_images = len(image_files)
+print(number_of_images)
+# # Loop through each file in the directory
+for filename in os.listdir(directory):
+    preprocessed_image = preprocess_and_resize_png(filename)
+    print(preprocessed_image)
 
