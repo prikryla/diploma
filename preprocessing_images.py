@@ -1,8 +1,8 @@
-from PIL import Image
 import numpy as np
 import psycopg2
+
+from PIL import Image
 from pathlib import Path
-import os
 
 def preprocess_and_resize_png(image_path, target_size=(24, 24)):
     # Open and load the PNG image
@@ -51,13 +51,13 @@ date_time = timestamp.strftime('%Y-%m-%d %H:%M:%S')
 
 # Loop through each file in the directory
 for file_path in image_files:
-
-
     cur.execute("SELECT current_timestamp")
     timestamp = cur.fetchone()[0]
     date_time = timestamp.strftime('%Y-%m-%d %H:%M:%S') 
 
-    preprocessed_image = preprocess_and_resize_png(str(file_path))  # Pass the full path as a string
+    preprocessed_image = preprocess_and_resize_png(str(file_path))
+
+    # Convert NumPy array to BYTEA suitable for PostgreSQL
     serialized_array = psycopg2.Binary(preprocessed_image.tobytes())
 
     try:
