@@ -24,6 +24,8 @@ def preprocess_and_resize_png(image_path, target_size=(24, 24)):
     # Expand dimensions to create a batch of one image
     img_array = np.expand_dims(img_array, axis=0)
 
+    return img_array
+
 conn_params = {
     'dbname': 'image_similarity',
     'user': 'postgres',
@@ -40,9 +42,33 @@ image_files = list(directory.glob('*.png'))
 
 # Get the number of image files in the directory
 number_of_images = len(image_files)
-print(number_of_images)
-# # Loop through each file in the directory
-for filename in os.listdir(directory):
-    preprocessed_image = preprocess_and_resize_png(filename)
-    print(preprocessed_image)
+
+
+cur.execute("SELECT current_timestamp")
+timestamp = cur.fetchone()[0]
+date_time = timestamp.strftime('%Y-%m-%d %H:%M:%S') 
+
+
+# Loop through each file in the directory
+for file_path in image_files:
+
+
+    cur.execute("SELECT current_timestamp")
+    timestamp = cur.fetchone()[0]
+    date_time = timestamp.strftime('%Y-%m-%d %H:%M:%S') 
+
+    preprocessed_image = preprocess_and_resize_png(str(file_path))  # Pass the full path as a string
+    serialized_array = psycopg2.Binary(preprocessed_image.tobytes())
+
+    try:
+        cur.execute(f"INSERT INTO cifar_images (image_name, image_data, created_at) VALUES (%s, %s, %s)",
+                    (file_path.name, serialized_array, date_time))
+        conn.commit()
+        print("Record inserted successfully.")
+    except Exception as e:
+        print(f"Error inserting data: {e}")
+        conn.rollback()
+
+cur.close()
+conn.close()
 
