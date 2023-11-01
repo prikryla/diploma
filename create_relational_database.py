@@ -29,11 +29,17 @@ CREATE TABLE IF NOT EXISTS cifar_images (
     image_name VARCHAR(255),
     image_data BYTEA,
     image_category VARCHAR(30)
+    image_type VARCHAR(10)
     created_at TIMESTAMP
 );
 '''
 
-cur.execute(create_table_query)
+#update_table_query = '''ALTER TABLE cifar_images ADD COLUMN image_type VARCHAR(30)'''
+update_value_in_table_query = '''UPDATE cifar_images SET image_type = 'test' '''
+
+#cur.execute(update_table_query)
+cur.execute(update_value_in_table_query)
+#cur.execute(create_table_query)
 conn.commit()
 
 # Close the cursor and connection
