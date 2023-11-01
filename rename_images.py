@@ -12,7 +12,7 @@ counter = 1001
 # Iterate through the files in the folder
 for filename in files:
     # Define the new name you want to assign
-    new_name = f'truck_{counter}'  # You can adjust the renaming logic
+    new_name = f'truck_{counter}.png'  # You can adjust the renaming logic
 
     # Create the full path for the old and new file names
     old_file_path = os.path.join(folder_path, filename)

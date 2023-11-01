@@ -1,5 +1,6 @@
 import numpy as np
 import psycopg2
+import os
 
 from PIL import Image
 from pathlib import Path
@@ -37,7 +38,7 @@ conn_params = {
 conn = psycopg2.connect(**conn_params)
 cur = conn.cursor()
 
-directory = Path('cifar10/test/airplane')
+directory = Path('cifar10/train/truck')
 image_files = list(directory.glob('*.png'))
 
 # Get the number of image files in the directory
@@ -61,8 +62,8 @@ for file_path in image_files:
     serialized_array = psycopg2.Binary(preprocessed_image.tobytes())
 
     try:
-        cur.execute(f"INSERT INTO cifar_images (image_name, image_data, created_at) VALUES (%s, %s, %s)",
-                    (file_path.name, serialized_array, date_time))
+        cur.execute(f"INSERT INTO cifar_images (image_name, image_data, created_at, image_category, image_type) VALUES (%s, %s, %s, %s, %s)",
+                    (file_path.name, serialized_array, date_time, 'truck', 'train'))
         conn.commit()
         print("Record inserted successfully.")
     except Exception as e:
