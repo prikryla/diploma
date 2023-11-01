@@ -24,10 +24,11 @@ cur = conn.cursor()
 
 # Create the table for 24x24 images
 create_table_query = '''
-CREATE TABLE cifar_images (
+CREATE TABLE IF NOT EXISTS cifar_images (
     image_id SERIAL PRIMARY KEY,
     image_name VARCHAR(255),
     image_data BYTEA,
+    image_category VARCHAR(30)
     created_at TIMESTAMP
 );
 '''
