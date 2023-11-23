@@ -1,16 +1,11 @@
 import numpy as np
 import psycopg2
-import os
-
 from PIL import Image
 from pathlib import Path
 
-def preprocess_and_resize_png(image_path, target_size=(24, 24)):
+def preprocess_png(image_path):
     # Open and load the PNG image
     img = Image.open(image_path)
-
-    # Resize the image to the target size (24x24 pixels)
-    img = img.resize(target_size)
 
     # Convert the PIL Image to a NumPy array
     img_array = np.array(img)
@@ -18,12 +13,9 @@ def preprocess_and_resize_png(image_path, target_size=(24, 24)):
     # Normalize pixel values to the range [0, 1]
     img_array = img_array / 255.0
 
-    # Ensure the image has the correct dimensions (24x24 pixels)
-    if img_array.shape != (24, 24, 3):
-        raise ValueError("Resized image should have dimensions 24x24 pixels.")
-
-    # Expand dimensions to create a batch of one image
-    img_array = np.expand_dims(img_array, axis=0)
+    # Ensure the image has the correct dimensions (32x32 pixels)
+    if img_array.shape != (32, 32, 3):
+        raise ValueError("Image should have dimensions 32x32 pixels.")
 
     return img_array
 
@@ -38,32 +30,24 @@ conn_params = {
 conn = psycopg2.connect(**conn_params)
 cur = conn.cursor()
 
-directory = Path('cifar10/train/truck')
+directory = Path('cifar10/test/truck')
 image_files = list(directory.glob('*.png'))
 
 # Get the number of image files in the directory
 number_of_images = len(image_files)
 
-
-cur.execute("SELECT current_timestamp")
-timestamp = cur.fetchone()[0]
-date_time = timestamp.strftime('%Y-%m-%d %H:%M:%S') 
-
-
 # Loop through each file in the directory
 for file_path in image_files:
-    cur.execute("SELECT current_timestamp")
-    timestamp = cur.fetchone()[0]
-    date_time = timestamp.strftime('%Y-%m-%d %H:%M:%S') 
-
-    preprocessed_image = preprocess_and_resize_png(str(file_path))
+    # Read and preprocess the original image
+    preprocessed_image = preprocess_png(str(file_path))
 
     # Convert NumPy array to BYTEA suitable for PostgreSQL
     serialized_array = psycopg2.Binary(preprocessed_image.tobytes())
 
     try:
-        cur.execute(f"INSERT INTO cifar_images (image_name, image_data, created_at, image_category, image_type) VALUES (%s, %s, %s, %s, %s)",
-                    (file_path.name, serialized_array, date_time, 'truck', 'train'))
+        cur.execute(
+            f"INSERT INTO cifar_images (image_name, image_data, image_category, image_type) VALUES (%s, %s, %s, %s)",
+            (file_path.name, serialized_array, 'truck', 'test'))
         conn.commit()
         print("Record inserted successfully.")
     except Exception as e:
@@ -72,4 +56,3 @@ for file_path in image_files:
 
 cur.close()
 conn.close()
-
