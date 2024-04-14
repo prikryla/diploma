@@ -12,7 +12,7 @@ pc = Pinecone(
 )
 
 # Define the index parameters
-index_name = "semantic"  # Replace with your index name
+index_name = "clustering"  # Replace with your index name
 index_dimension = 768  # Assuming your Sentence Transformer model has an output dimension of 768
 
 # Check if the index already exists, if not, create it
