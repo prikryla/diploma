@@ -3,7 +3,7 @@ from psycopg2 import sql
 
 # Connection parameters
 conn_params = {
-    'dbname': 'image_similarity',
+    'dbname': 'diploma_2',
     'user': 'postgres',
     'password': 'postgres',
     'host': '127.0.0.1'
@@ -14,11 +14,12 @@ conn = psycopg2.connect(**conn_params)
 cursor = conn.cursor()
 
 create_table_query = """
-    CREATE TABLE semantic_search (
+    CREATE TABLE diploma_semantic_fix (
         id SERIAL PRIMARY KEY,
         class_index VARCHAR,
         title VARCHAR,
-        description TEXT
+        description TEXT,
+        embedding BYTEA
     );
 """
 
