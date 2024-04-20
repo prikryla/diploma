@@ -10,19 +10,19 @@ df = pd.read_csv(csv_file_path, delimiter=';')
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
 pc = Pinecone(
-    api_key="eeb95b42-5012-4301-854b-7d75ae9fd293"  # Replace with your API key
+    api_key="eeb95b42-5012-4301-854b-7d75ae9fd293"  # Replace with your actual API key
 )
 
 # Define the index parameters
-index_name = "clustering"  # Replace with your index name
-index_dimension = 384  # Assuming your Sentence Transformer model has an output dimension of 768
+index_name = "semanticsearch"  # Replace with your actual index name
+index_dimension = 384  # Assuming your Sentence Transformer model has an output dimension of 384
 
 # Check if the index already exists, if not, create it
 if index_name not in pc.list_indexes().names():
     pc.create_index(
         name=index_name,
         dimension=index_dimension,
-        metric='cosine',  # You might want to adjust the metric based on your use case
+        metric='cosine',
         spec=ServerlessSpec(
             cloud='gcp',
             region='us-central1'
@@ -31,17 +31,28 @@ if index_name not in pc.list_indexes().names():
 
 index = pc.Index(index_name)
 
-# Function to create embeddings and save to Pinecone
+# Function to create embeddings, add metadata, and save to Pinecone
 def create_and_save_embeddings():
     embeddings = []
 
-    for idx, description in enumerate(df['description']):
+    for idx, row in df.iterrows():
+        description = row['description']
+        class_index = row['class_index']
+
         # Generate embeddings for the description text
         description_embedding = model.encode(description, convert_to_tensor=True)
         embedding_list = description_embedding.numpy().tolist()
-        embeddings.append({'id': str(idx), 'values': embedding_list})
 
-    # Define batch size
+        # Define metadata based on class_index
+        topic = {1: 'Word', 2: 'Sport', 3: 'Business', 4: 'Sci/Tech'}.get(class_index, 'Unknown')
+
+        embeddings.append({
+            'id': str(idx),
+            'values': embedding_list,
+            'metadata': {'topic': topic}
+        })
+
+    # Define batch size for upsert
     batch_size = 1000
 
     # Save vectors to Pinecone index in batches
