@@ -12,8 +12,8 @@ pc = Pinecone(
 )
 
 # Define the index parameters
-index_name = "clustering"  # Replace with your index name
-index_dimension = 768  # Assuming your Sentence Transformer model has an output dimension of 768
+index_name = "semanticsearch"  # Replace with your index name
+index_dimension = 384  # Assuming your Sentence Transformer model has an output dimension of 768
 
 # Check if the index already exists, if not, create it
 if index_name not in pc.list_indexes().names():
@@ -22,8 +22,8 @@ if index_name not in pc.list_indexes().names():
         dimension=index_dimension,
         metric='cosine',  # You might want to adjust the metric based on your use case
         spec=ServerlessSpec(
-            cloud='gcp',
-            region='us-central1'
+            cloud='aws',
+            region='us-east1'
         )
     )
 
@@ -41,18 +41,19 @@ query_embedding = model.encode(query_text, convert_to_tensor=True).tolist()
 results = index.query(
     vector=[query_embedding],
     top_k=5,
-    include_values=True
+    include_metadata=True  # Make sure to include this to retrieve metadata
 )
 
 # Retrieve the relevant information from the DataFrame based on the search results
 search_results = []
 for result in results['matches']:
-    idx = int(result.id)
+    idx = int(result['id'])
     description = df.loc[df['id'] == idx, 'description'].values[0]
-    similarity = result.score
-    search_results.append({'id': idx, 'description': description, 'similarity': similarity})
+    similarity = result['score']
+    topic = result['metadata'].get('topic', 'Unknown')  # Retrieve topic from metadata
+    search_results.append({'id': idx, 'description': description, 'similarity': similarity, 'topic': topic})
 
 # Print the search results
 print("Search results for query:", query_text)
 for result in search_results:
-    print(f"ID: {result['id']}\nDescription: {result['description']}\nSimilarity: {result['similarity']}\n")
+    print(f"ID: {result['id']}\nDescription: {result['description']}\nTopic: {result['topic']}\nSimilarity: {result['similarity']}\n")
