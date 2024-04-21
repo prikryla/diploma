@@ -24,8 +24,8 @@ if index_name not in pc.list_indexes().names():
         dimension=index_dimension,
         metric='cosine',
         spec=ServerlessSpec(
-            cloud='gcp',
-            region='us-central1'
+            cloud='aws',
+            region='us-east-1'
         )
     )
 
@@ -38,6 +38,8 @@ def create_and_save_embeddings():
     for idx, row in df.iterrows():
         description = row['description']
         class_index = row['class_index']
+        title = row['title']
+        description = row['description']
 
         # Generate embeddings for the description text
         description_embedding = model.encode(description, convert_to_tensor=True)
@@ -49,7 +51,7 @@ def create_and_save_embeddings():
         embeddings.append({
             'id': str(idx),
             'values': embedding_list,
-            'metadata': {'topic': topic}
+            'metadata': {'topic': topic, 'title': title, 'description': description}
         })
 
     # Define batch size for upsert
