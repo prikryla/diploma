@@ -1,5 +1,6 @@
-from pymilvus import MilvusClient
 import pandas as pd
+
+from pymilvus import MilvusClient
 from sentence_transformers import SentenceTransformer
 
 # Milvus connection details
@@ -15,7 +16,7 @@ if not client.has_collection(collection_name):
     client.create_collection(
         collection_name=collection_name,
         dimension=384,  # Set this to the dimensionality of your embeddings
-        metric_type="IP"  # Inner Product (cosine similarity)
+        metric_type="COSINE"  # Inner Product (cosine similarity)
     )
     print(f"Collection '{collection_name}' created.")
 else:
