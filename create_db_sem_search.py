@@ -14,12 +14,12 @@ conn = psycopg2.connect(**conn_params)
 cursor = conn.cursor()
 
 create_table_query = """
-    CREATE TABLE diploma_semantic_fix (
+    CREATE TABLE diploma_semantic_search (
         id SERIAL PRIMARY KEY,
         class_index VARCHAR,
         title VARCHAR,
         description TEXT,
-        embedding BYTEA
+        embedding FLOAT[]
     );
 """
 
