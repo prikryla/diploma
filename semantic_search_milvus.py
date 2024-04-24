@@ -1,11 +1,18 @@
 import json
 import pandas as pd
+import os
+
 from pymilvus import MilvusClient
 from sentence_transformers import SentenceTransformer
+from dotenv import load_dotenv
+
+load_dotenv()
+token = os.getenv('MILVUS_TOKEN')
+endpoint = os.getenv('MILVUS_ENDPOINT')
 
 # Milvus connection details
-CLUSTER_ENDPOINT = "https://in03-223185a7ed9d4b1.api.gcp-us-west1.zillizcloud.com"
-TOKEN = "c3fdf5db6f838bc340e7d1b5c3f6888ed54679c11eb725e9b17a73435969fcb94beeb5a9c602b7d5a2ebc194b046f57d9b5e1ce3"
+CLUSTER_ENDPOINT = endpoint
+TOKEN = token
 
 client = MilvusClient(uri=CLUSTER_ENDPOINT, token=TOKEN)
 
