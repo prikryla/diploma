@@ -5,6 +5,7 @@ import os
 from pinecone import Pinecone
 from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
+from sklearn.cluster import KMeans
 
 load_dotenv()
 api_key = os.getenv('API_KEY_PINECONE')
@@ -16,37 +17,38 @@ pc = Pinecone(api_key=api_key)
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
 # Define the index parameters
-index_name = "clustering"  # Replace with your index name
+index_name = "semanticsearch"
 
 # Retrieve the index
 index = pc.Index(index_name)
 
-# Load your data from the .csv file
-data = pd.read_csv("test_bez_upravy.csv", sep=";")
+ids_list = [str(i) for i in range(1, 7601)]
 
-# Function to find similar documents given a query text
-def find_similar_documents(query_text, top_k=3):
-    # Encode the query text
-    query_embedding = model.encode(query_text, convert_to_tensor=True).tolist()
+# Function to fetch vectors in batches
+def fetch_vectors_in_batches(ids, batch_size=100):
+    """ Fetch vectors from Pinecone in batches. """
+    vectors = []
+    for i in range(0, len(ids), batch_size):
+        batch_ids = ids[i:i + batch_size]
+        response = index.fetch(batch_ids)
+        vectors.extend([item['values'] for item in response['vectors'].values()])
+    return np.array(vectors)
 
-    # Query the vector database to retrieve similar documents
-    query_result = index.query(vector=[query_embedding], top_k=top_k, include_values=True)
+# Fetch vectors in batches; adjust batch size as needed
+vectors = fetch_vectors_in_batches(ids_list, batch_size=100)
 
-    # Extract document IDs and scores from the query result
-    similar_document_ids = [item.id for item in query_result.items]
-    similar_document_scores = [item.score for item in query_result.items]
+# Set the number of clusters
+n_clusters = 5
 
-    # Get the text of similar documents
-    similar_documents = data[data['id'].isin(similar_document_ids)]
+# Initialize KMeans
+kmeans = KMeans(n_clusters=n_clusters, random_state=0)
 
-    # Add scores to the DataFrame
-    similar_documents['score'] = similar_document_scores
+# Fit KMeans with the fetched vectors
+kmeans.fit(vectors)
 
-    return similar_documents
+# Get cluster labels for each vector
+cluster_labels = kmeans.labels_
 
-# Example usage
-query_text = "What is the capital of Spain?"
-similar_documents = find_similar_documents(query_text)
-print("Similar documents:")
-for _, doc in similar_documents.iterrows():
-    print(doc["title"], "-", doc["description"])
+# Example: Print cluster assignments
+for label, vector_id in zip(cluster_labels, ids_list):
+    print(f"Vector ID: {vector_id} is in Cluster: {label}")
