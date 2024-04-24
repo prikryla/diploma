@@ -1,6 +1,12 @@
-from pinecone import Pinecone, ServerlessSpec
 import pandas as pd
+import os
+
+from pinecone import Pinecone, ServerlessSpec
 from sentence_transformers import SentenceTransformer
+from dotenv import load_dotenv
+
+load_dotenv()
+api_key = os.getenv('API_KEY_PINECONE')
 
 # Load CSV data
 csv_file_path = 'test_bez_upravy.csv'
@@ -10,12 +16,12 @@ df = pd.read_csv(csv_file_path, delimiter=';')
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
 pc = Pinecone(
-    api_key="eeb95b42-5012-4301-854b-7d75ae9fd293"  # Replace with your actual API key
+    api_key=api_key
 )
 
 # Define the index parameters
-index_name = "semanticsearch"  # Replace with your actual index name
-index_dimension = 384  # Assuming your Sentence Transformer model has an output dimension of 384
+index_name = "semanticsearch"
+index_dimension = 384
 
 # Check if the index already exists, if not, create it
 if index_name not in pc.list_indexes().names():
