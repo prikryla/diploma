@@ -1,18 +1,22 @@
 import psycopg2
 import psycopg2.extras
 import numpy as np
+import os 
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from scipy.spatial.distance import cdist
 import matplotlib.pyplot as plt
-from sentence_transformers import SentenceTransformer
+from dotenv import load_dotenv
 
-# Connection parameters
+# Load environment variables
+load_dotenv()
+
+# Connection parameters using environment variables
 conn_params = {
-    'dbname': 'diploma_2',
-    'user': 'postgres',
-    'password': 'postgres',
-    'host': '127.0.0.1'
+    'dbname': os.getenv('PG_DBNAME'),
+    'user': os.getenv('PG_USER'),
+    'password': os.getenv('PG_PASSWORD'),
+    'host': os.getenv('PG_HOST')
 }
 
 # Connect to the PostgreSQL database
@@ -20,20 +24,20 @@ conn = psycopg2.connect(**conn_params)
 cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
 # SQL to fetch vectors; adjust the SQL based on your actual table and column names
-sql = "SELECT id, embedding FROM diploma_semantic_search ORDER BY id LIMIT 7600;"
+sql = "SELECT id, embedding FROM diploma_semantic ORDER BY id LIMIT 7600;"
 
 # Execute the query
 cursor.execute(sql)
 # Fetch all the results
 results = cursor.fetchall()
 
-# Extract ids and vectors
-ids_list = [result['id'] for result in results]
-vectors = np.array([result['embedding'] for result in results])
-
 # Close the database connection
 cursor.close()
 conn.close()
+
+# Extract ids and vectors, converting binary data to numpy arrays
+ids_list = [result['id'] for result in results]
+vectors = np.array([np.frombuffer(result['embedding'], dtype=np.float32) for result in results])
 
 # Clustering with KMeans
 n_clusters = 5
