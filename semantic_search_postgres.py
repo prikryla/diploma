@@ -2,7 +2,6 @@ import psycopg2
 import psycopg2.extras
 import numpy as np
 import os
-
 from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
 
@@ -10,7 +9,7 @@ from dotenv import load_dotenv
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
 # Compute the query vector
-search_query = "WTA tennis tournament"  # Changed variable name from `query` to `search_query`
+search_query = "Technology company released new software"
 query_vector = model.encode(search_query)
 
 # Function to compute cosine similarity
@@ -26,6 +25,15 @@ conn_params = {
     'password': os.getenv('PG_PASSWORD'),
     'host': os.getenv('PG_HOST')
 }
+
+# Dictionary to map class indexes to topics
+class_to_topic = {
+    1: 'Word',
+    2: 'Sport',
+    3: 'Business',
+    4: 'Sci/Tech'
+}
+
 conn = psycopg2.connect(**conn_params)
 cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
@@ -41,13 +49,17 @@ results = []
 
 # Iterate through each row in the result
 for row in cur:
-    class_index, title, description, stored_embedding_blob = row['class_index'], row['title'], row['description'], row['embedding']
+    # Ensure class_index is treated as integer
+    class_index = int(row['class_index'])  # Convert class_index to int
+    title, description, stored_embedding_blob = row['title'], row['description'], row['embedding']
     # Convert the stored BLOB back to numpy array
     stored_embedding = np.frombuffer(stored_embedding_blob, dtype=np.float32)
     # Calculate similarity
     similarity = cosine_similarity(query_vector, stored_embedding)
-    # Append results including similarity
-    results.append((class_index, title, description, similarity))
+    # Determine topic from class index
+    topic = class_to_topic.get(class_index, 'Unknown')  # Use converted class_index
+    # Append results including similarity and topic
+    results.append((topic, title, description, similarity))
 
 # Close the cursor and connection
 cur.close()
@@ -59,9 +71,9 @@ top_5_results = results[:5]
 
 # Display the top 5 results with better formatting
 print("Top 5 Similar Entries:")
-for i, (class_index, title, description, similarity) in enumerate(top_5_results, start=1):
+for i, (topic, title, description, similarity) in enumerate(top_5_results, start=1):
     print(f"\nResult {i}:")
-    print(f"  Class Index: {class_index}")
+    print(f"  Topic: {topic}")
     print(f"  Title: {title}")
     print(f"  Description: {description[:150]}...")  # Print first 150 characters of description
     print(f"  Similarity Score: {similarity:.4f}")  # Format similarity to 4 decimal places
