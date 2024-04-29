@@ -52,11 +52,6 @@ kmeans.fit(vectors)
 # Get cluster labels for each vector
 cluster_labels = kmeans.labels_
 
-# # Example: Print cluster assignments
-# for label, vector_id in zip(cluster_labels, ids_list):
-#     print(f"Vector ID: {vector_id} is in Cluster: {label}")
-
-
 # Reduce dimensions to 2D for visualization
 pca = PCA(n_components=2)
 vectors_reduced = pca.fit_transform(vectors)
@@ -65,9 +60,10 @@ vectors_reduced = pca.fit_transform(vectors)
 plt.figure(figsize=(10, 8))
 scatter = plt.scatter(vectors_reduced[:, 0], vectors_reduced[:, 1], c=cluster_labels, cmap='viridis', alpha=0.5)
 plt.colorbar(scatter)
-plt.title('Cluster Visualization')
-plt.xlabel('PCA Component 1')
-plt.ylabel('PCA Component 2')
+plt.title('Cluster Visualization of Vector Embeddings')
+plt.xlabel('First Principal Component - Variation Direction')
+plt.ylabel('Second Principal Component - Variation Direction')
+plt.savefig('pinecone_cluster_visualization.png')
 plt.show()
 
 # Calculate distances from each vector to each centroid
