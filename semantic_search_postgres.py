@@ -1,46 +1,49 @@
 import psycopg2
 import psycopg2.extras
-from sentence_transformers import SentenceTransformer
 import numpy as np
+import os
 
-# Connection parameters
-conn_params = {
-    'dbname': 'diploma_2',
-    'user': 'postgres',
-    'password': 'postgres',
-    'host': '127.0.0.1'
-}
+from sentence_transformers import SentenceTransformer
+from dotenv import load_dotenv
 
 # Load the Sentence Transformer model
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
 # Compute the query vector
-query = "WTA tennis tournament"
-query_vector = model.encode(query)
+search_query = "WTA tennis tournament"  # Changed variable name from `query` to `search_query`
+query_vector = model.encode(search_query)
 
 # Function to compute cosine similarity
 def cosine_similarity(a, b):
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
-# Connect to the database
+load_dotenv()
+
+# Connection parameters using environment variables
+conn_params = {
+    'dbname': os.getenv('PG_DBNAME'),
+    'user': os.getenv('PG_USER'),
+    'password': os.getenv('PG_PASSWORD'),
+    'host': os.getenv('PG_HOST')
+}
 conn = psycopg2.connect(**conn_params)
 cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
-# Query to retrieve embeddings and other data
-query = """
+# SQL query to retrieve embeddings and other data
+sql_query = """
 SELECT class_index, title, description, embedding
-FROM diploma_semantic_search
+FROM diploma_semantic
 """
-cur.execute(query)
+cur.execute(sql_query)
 
 # List to hold results
 results = []
 
 # Iterate through each row in the result
 for row in cur:
-    class_index, title, description, stored_embedding = row
-    # Convert the stored embedding from list back to numpy array
-    stored_embedding = np.array(stored_embedding)
+    class_index, title, description, stored_embedding_blob = row['class_index'], row['title'], row['description'], row['embedding']
+    # Convert the stored BLOB back to numpy array
+    stored_embedding = np.frombuffer(stored_embedding_blob, dtype=np.float32)
     # Calculate similarity
     similarity = cosine_similarity(query_vector, stored_embedding)
     # Append results including similarity
@@ -54,7 +57,6 @@ conn.close()
 results.sort(key=lambda x: x[3], reverse=True)  # sort by similarity in descending order
 top_5_results = results[:5]
 
-# Display the top 5 results
 # Display the top 5 results with better formatting
 print("Top 5 Similar Entries:")
 for i, (class_index, title, description, similarity) in enumerate(top_5_results, start=1):
