@@ -1,17 +1,26 @@
 import pandas as pd
 import psycopg2
 import spacy
+import numpy as np
+import os
+
+from dotenv import load_dotenv
 
 # Load spaCy model
 nlp = spacy.load("en_core_web_sm")
 
-# Connect to the PostgreSQL server
+# Load environment variables from .env file
+load_dotenv()
+
+# Connection parameters using environment variables
 conn_params = {
-    'dbname': 'diploma_2',
-    'user': 'postgres',
-    'password': 'postgres',
-    'host': '127.0.0.1'
+    'dbname': os.getenv('PG_DBNAME'),
+    'user': os.getenv('PG_USER'),
+    'password': os.getenv('PG_PASSWORD'),
+    'host': os.getenv('PG_HOST')
 }
+
+# Connect to the PostgreSQL server
 conn = psycopg2.connect(**conn_params)
 cursor = conn.cursor()
 
@@ -23,20 +32,17 @@ for index, row in df.iterrows():
     # Extract description from CSV row
     description = row['description']
     
-    # Preprocess description (optional)
-    # For example, remove special characters, punctuation, etc.
-    # description = preprocess(description)
-    
     # Tokenize and get the mean vector of the tokens
     doc = nlp(description)
-    embedding = doc.vector.tolist()  # Convert embedding array to list
+    embedding = np.array(doc.vector, dtype=np.float32)  # Ensure it's a numpy array of type float32
+    binary_embedding = embedding.tobytes()  # Convert numpy array to bytes, suitable for BLOB storage
     
     # Insert data into PostgreSQL table
     insert_query = """
         INSERT INTO diploma_semantic_search (class_index, title, description, embedding)
         VALUES (%s, %s, %s, %s)
     """
-    data = (row['class_index'], row['title'], row['description'], embedding)
+    data = (row['class_index'], row['title'], row['description'], binary_embedding)
     cursor.execute(insert_query, data)
 
 # Commit the changes
