@@ -1,13 +1,9 @@
 import pandas as pd
 import psycopg2
-import spacy
 import numpy as np
 import os
-
 from dotenv import load_dotenv
-
-# Load spaCy model
-nlp = spacy.load("en_core_web_sm")
+from sentence_transformers import SentenceTransformer
 
 # Load environment variables from .env file
 load_dotenv()
@@ -20,34 +16,25 @@ conn_params = {
     'host': os.getenv('PG_HOST')
 }
 
-# Connect to the PostgreSQL server
-conn = psycopg2.connect(**conn_params)
-cursor = conn.cursor()
+# Load the Sentence Transformer model
+model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
 # Read CSV file
 df = pd.read_csv('test_bez_upravy.csv', delimiter=';')
 
-# Iterate over rows
-for index, row in df.iterrows():
-    # Extract description from CSV row
-    description = row['description']
-    
-    # Tokenize and get the mean vector of the tokens
-    doc = nlp(description)
-    embedding = np.array(doc.vector, dtype=np.float32)  # Ensure it's a numpy array of type float32
-    binary_embedding = embedding.tobytes()  # Convert numpy array to bytes, suitable for BLOB storage
-    
-    # Insert data into PostgreSQL table
-    insert_query = """
-        INSERT INTO diploma_semantic_search (class_index, title, description, embedding)
-        VALUES (%s, %s, %s, %s)
-    """
-    data = (row['class_index'], row['title'], row['description'], binary_embedding)
-    cursor.execute(insert_query, data)
-
-# Commit the changes
-conn.commit()
-
-# Close the cursor and connection
-cursor.close()
-conn.close()
+# Using context manager for handling connection and cursor
+with psycopg2.connect(**conn_params) as conn:
+    with conn.cursor() as cursor:
+        for index, row in df.iterrows():
+            description = row['description']
+            # Generate embedding using Sentence Transformer
+            embedding = model.encode(description, convert_to_tensor=False)  # Get the embedding as a numpy array
+            binary_embedding = embedding.astype(np.float32).tobytes()  # Convert numpy array to bytes for BLOB storage
+            
+            insert_query = """
+                INSERT INTO diploma_semantic (class_index, title, description, embedding)
+                VALUES (%s, %s, %s, %s)
+            """
+            data = (row['class_index'], row['title'], row['description'], binary_embedding)
+            cursor.execute(insert_query, data)
+        conn.commit()
