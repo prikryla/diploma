@@ -20,7 +20,7 @@ conn = psycopg2.connect(**conn_params)
 cursor = conn.cursor()
 
 create_table_query = """
-    CREATE TABLE IF NOT EXISTS diploma_semantic_search (
+    CREATE TABLE IF NOT EXISTS ag_dataset (
         id SERIAL PRIMARY KEY,
         class_index VARCHAR,
         title VARCHAR,
@@ -29,7 +29,18 @@ create_table_query = """
     );
 """
 
+
 cursor.execute(create_table_query)
+
+create_sentiment_table_query = """
+CREATE TABLE IF NOT EXISTS ag_dataset_sentiment (
+    data_id INTEGER PRIMARY KEY,
+    subjectivity FLOAT,
+    polarity FLOAT,
+    FOREIGN KEY (data_id) REFERENCES ag_dataset(id) ON DELETE CASCADE
+);
+"""
+cursor.execute(create_sentiment_table_query)
 
 # Commit the changes
 conn.commit()
