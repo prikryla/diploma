@@ -19,22 +19,38 @@ conn_params = {
 # Load the Sentence Transformer model
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
-# Read CSV file
+# Read CSV file for text data
 df = pd.read_csv('test_bez_upravy.csv', delimiter=';')
 
-# Using context manager for handling connection and cursor
+# Read CSV file for enriched data containing subjectivity and polarity
+df_enriched = pd.read_csv('enriched.csv', delimiter=',')
+
+# Connect to the PostgreSQL server using context managers
 with psycopg2.connect(**conn_params) as conn:
     with conn.cursor() as cursor:
         for index, row in df.iterrows():
             description = row['description']
+
             # Generate embedding using Sentence Transformer
-            embedding = model.encode(description, convert_to_tensor=False)  # Get the embedding as a numpy array
-            binary_embedding = embedding.astype(np.float32).tobytes()  # Convert numpy array to bytes for BLOB storage
-            
+            embedding = model.encode(description, convert_to_tensor=False)
+            binary_embedding = embedding.astype(np.float32).tobytes()
+
+            # Insert text data and embedding into ag_dataset
             insert_query = """
-                INSERT INTO diploma_semantic (class_index, title, description, embedding)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO ag_dataset (class_index, title, description, embedding)
+                VALUES (%s, %s, %s, %s) RETURNING id
             """
             data = (row['class_index'], row['title'], row['description'], binary_embedding)
             cursor.execute(insert_query, data)
+            data_id = cursor.fetchone()[0]
+
+            insert_sentiment_query = """
+                INSERT INTO ag_dataset_sentiment (data_id, subjectivity, polarity)
+                VALUES (%s, %s, %s)
+            """
+
+            enriched_row = df_enriched.iloc[index]
+            sentiment_data = (data_id, enriched_row['subjectivity'], enriched_row['polarity'])
+            cursor.execute(insert_sentiment_query, sentiment_data)
+
         conn.commit()
