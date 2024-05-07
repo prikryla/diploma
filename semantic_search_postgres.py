@@ -37,10 +37,10 @@ class_to_topic = {
 conn = psycopg2.connect(**conn_params)
 cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
-# SQL query to retrieve embeddings and other data
+# SQL query to retrieve ID, embeddings, and other data
 sql_query = """
-SELECT class_index, title, description, embedding
-FROM diploma_semantic
+SELECT id, class_index, title, description, embedding
+FROM ag_dataset
 """
 cur.execute(sql_query)
 
@@ -51,7 +51,7 @@ results = []
 for row in cur:
     # Ensure class_index is treated as integer
     class_index = int(row['class_index'])  # Convert class_index to int
-    title, description, stored_embedding_blob = row['title'], row['description'], row['embedding']
+    entry_id, title, description, stored_embedding_blob = row['id'], row['title'], row['description'], row['embedding']
     # Convert the stored BLOB back to numpy array
     stored_embedding = np.frombuffer(stored_embedding_blob, dtype=np.float32)
     # Calculate similarity
@@ -59,20 +59,21 @@ for row in cur:
     # Determine topic from class index
     topic = class_to_topic.get(class_index, 'Unknown')  # Use converted class_index
     # Append results including similarity and topic
-    results.append((topic, title, description, similarity))
+    results.append((entry_id, topic, title, description, similarity))
 
 # Close the cursor and connection
 cur.close()
 conn.close()
 
 # Sort results by similarity and get top 5
-results.sort(key=lambda x: x[3], reverse=True)  # sort by similarity in descending order
+results.sort(key=lambda x: x[4], reverse=True)  # sort by similarity in descending order
 top_5_results = results[:5]
 
 # Display the top 5 results with better formatting
 print("Top 5 Similar Entries:")
-for i, (topic, title, description, similarity) in enumerate(top_5_results, start=1):
+for i, (entry_id, topic, title, description, similarity) in enumerate(top_5_results, start=1):
     print(f"\nResult {i}:")
+    print(f"  ID: {entry_id}")
     print(f"  Topic: {topic}")
     print(f"  Title: {title}")
     print(f"  Description: {description[:150]}...")  # Print first 150 characters of description

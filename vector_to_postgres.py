@@ -4,6 +4,7 @@ import numpy as np
 import os
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
+import time
 
 # Load environment variables from .env file
 load_dotenv()
@@ -20,14 +21,14 @@ conn_params = {
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
 # Read CSV file for text data
-df = pd.read_csv('test_bez_upravy.csv', delimiter=';')
-
-# Read CSV file for enriched data containing subjectivity and polarity
-df_enriched = pd.read_csv('enriched.csv', delimiter=',')
+df = pd.read_csv('train_fixed.csv', delimiter=';')
 
 # Connect to the PostgreSQL server using context managers
 with psycopg2.connect(**conn_params) as conn:
     with conn.cursor() as cursor:
+        # Start tracking time for ag_dataset
+        start_time_ag_dataset = time.time()
+
         for index, row in df.iterrows():
             description = row['description']
 
@@ -37,20 +38,16 @@ with psycopg2.connect(**conn_params) as conn:
 
             # Insert text data and embedding into ag_dataset
             insert_query = """
-                INSERT INTO ag_dataset (class_index, title, description, embedding)
+                INSERT INTO ag_dataset_full (class_index, title, description, embedding)
                 VALUES (%s, %s, %s, %s) RETURNING id
             """
             data = (row['class_index'], row['title'], row['description'], binary_embedding)
             cursor.execute(insert_query, data)
-            data_id = cursor.fetchone()[0]
+            cursor.fetchone()  # Fetch the ID, but don't use it for ag_dataset_sentiment insertion
 
-            insert_sentiment_query = """
-                INSERT INTO ag_dataset_sentiment (data_id, subjectivity, polarity)
-                VALUES (%s, %s, %s)
-            """
-
-            enriched_row = df_enriched.iloc[index]
-            sentiment_data = (data_id, enriched_row['subjectivity'], enriched_row['polarity'])
-            cursor.execute(insert_sentiment_query, sentiment_data)
+        # Calculate execution time for ag_dataset
+        end_time_ag_dataset = time.time()
+        execution_time_ag_dataset = end_time_ag_dataset - start_time_ag_dataset
+        print(f"Data upload completed for ag_dataset_full in {execution_time_ag_dataset} seconds.")
 
         conn.commit()

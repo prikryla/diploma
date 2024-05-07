@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import time
 
 from pinecone import Pinecone, ServerlessSpec
 from sentence_transformers import SentenceTransformer
@@ -37,15 +38,14 @@ if index_name not in pc.list_indexes().names():
 
 index = pc.Index(index_name)
 
-# Function to create embeddings, add metadata, and save to Pinecone
-def create_and_save_embeddings():
+# Function to create embeddings and add metadata
+def create_embeddings():
     embeddings = []
 
     for idx, row in df.iterrows():
         description = row['description']
         class_index = row['class_index']
         title = row['title']
-        description = row['description']
 
         # Generate embeddings for the description text
         description_embedding = model.encode(description, convert_to_tensor=True)
@@ -60,13 +60,22 @@ def create_and_save_embeddings():
             'metadata': {'topic': topic, 'title': title, 'description': description}
         })
 
-    # Define batch size for upsert
-    batch_size = 1000
+    return embeddings
 
-    # Save vectors to Pinecone index in batches
+# Function to upsert embeddings in batches and measure time
+def upsert_embeddings():
+    embeddings = create_embeddings()
+    batch_size = 1000
+    total_batches = len(embeddings) // batch_size + (len(embeddings) % batch_size > 0)
+    start_time = time.time()
+
     for i in range(0, len(embeddings), batch_size):
         batch = embeddings[i:i + batch_size]
         index.upsert(vectors=batch)
+        print(f"Processed batch {i // batch_size + 1} of {total_batches}")
+
+    end_time = time.time()
+    print(f"Time taken to upsert vectors in batches: {end_time - start_time} seconds")
 
 if __name__ == "__main__":
-    create_and_save_embeddings()
+    upsert_embeddings()

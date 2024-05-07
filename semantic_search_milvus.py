@@ -20,7 +20,7 @@ client = MilvusClient(uri=CLUSTER_ENDPOINT, token=TOKEN)
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
 # Your query sentence
-query_sentence = "WTA tennis tournament"
+query_sentence = "Technology company produced new software"
 
 # Convert the query sentence to an embedding
 query_embedding = model.encode(query_sentence)
@@ -32,7 +32,7 @@ results = client.search(
     collection_name="semanticsearch",
     data=query_embedding_list,
     limit=5,
-    search_params={"metric_type": "IP", "params": {"nprobe": 10}} 
+    search_params={"metric_type": "COSINE", "params": {}} 
 )
 
 result = json.dumps(results, indent=4)
