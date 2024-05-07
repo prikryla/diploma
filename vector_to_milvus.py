@@ -7,8 +7,8 @@ from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
 
 load_dotenv()
-token = '13e34a537f5c46d4bf7353f8d1dcca6a163783a97ebfeb1318757910968c0f259115e9eb2b50dcc5dc230348caf311c7fcedbb44'
-endpoint = 'https://in03-14c4cf16539a96a.api.gcp-us-west1.zillizcloud.com'
+token = os.getenv('MILVUS_TOKEN')
+endpoint = os.getenv('MILVUS_ENDPOINT')
 
 # Milvus connection details
 CLUSTER_ENDPOINT = endpoint
