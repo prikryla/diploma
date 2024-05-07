@@ -2,14 +2,14 @@ import pandas as pd
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-
 from pinecone import Pinecone
-from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from scipy.spatial.distance import cdist
+import time
+from concurrent.futures import ThreadPoolExecutor
 
+# Load environment variables
 load_dotenv()
 api_key = os.getenv('API_KEY_PINECONE')
 
@@ -22,73 +22,63 @@ index_name = "clusteringenriched"  # Using the index where polarity and subjecti
 # Retrieve the index
 index = pc.Index(index_name)
 
-# Get list of ids, here assuming you know the IDs range or have them listed
+# Get list of ids, assuming you know the IDs range
 ids_list = [str(i) for i in range(1, 7601)]
 
-# Fetch vectors and metadata in batches
-def fetch_data_in_batches(ids, batch_size=100):
-    """ Fetch vectors and metadata from Pinecone in batches. """
+# Function to fetch vectors and metadata in batches
+def fetch_data_in_batches(ids, batch_size=500):  # Adjusted batch size for optimal performance
     full_data = []
-    for i in range(0, len(ids), batch_size):
-        batch_ids = ids[i:i + batch_size]
-        response = index.fetch(batch_ids)
-        for item in response['vectors'].values():
-            full_data.append({
-                'vector': item['values'],
-                'polarity': item['metadata']['polarity'],
-                'subjectivity': item['metadata']['subjectivity']
-            })
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = [executor.submit(fetch_batch, ids[i:i + batch_size]) for i in range(0, len(ids), batch_size)]
+        for future in futures:
+            full_data.extend(future.result())
     return pd.DataFrame(full_data)
 
+def fetch_batch(batch_ids):
+    response = index.fetch(batch_ids)
+    return [{
+        'vector': item['values'],
+        'polarity': item['metadata']['polarity'],
+        'subjectivity': item['metadata']['subjectivity']
+    } for item in response['vectors'].values()]
+
+# Start measuring time for querying data
+start_time_query = time.time()
+
 # Fetch data
-data = fetch_data_in_batches(ids_list, batch_size=100)
+data = fetch_data_in_batches(ids_list)
 
-# Prepare features by combining vectors with polarity and subjectivity
-vectors = np.array(data['vector'].tolist())
-polarity = np.expand_dims(data['polarity'], axis=1)
-subjectivity = np.expand_dims(data['subjectivity'], axis=1)
+# End measuring time for querying data
+end_time_query = time.time()
+print(f"Overall query execution time: {end_time_query - start_time_query} seconds")
 
-# Combine vectors with polarity and subjectivity
-features = np.hstack((vectors, polarity, subjectivity))
+# Function to perform clustering
+def perform_clustering(data):
+    vectors = np.array(data['vector'].tolist())
+    polarity = np.expand_dims(data['polarity'], axis=1)
+    subjectivity = np.expand_dims(data['subjectivity'], axis=1)
+    features = np.hstack((vectors, polarity, subjectivity))  # Combine vectors with polarity and subjectivity
 
-# Clustering with only vectors
-n_clusters = 5
-kmeans_vectors = KMeans(n_clusters=n_clusters, random_state=0)
-kmeans_vectors.fit(vectors)
+    n_clusters = 3  # Specify the number of clusters
+    kmeans_combined = KMeans(n_clusters=n_clusters, random_state=0)
+    kmeans_combined.fit(features)  # Clustering with combined features
 
-# Clustering with combined features
-kmeans_combined = KMeans(n_clusters=n_clusters, random_state=0)
-kmeans_combined.fit(features)
+    # PCA for dimensionality reduction
+    pca = PCA(n_components=2)
+    combined_reduced = pca.fit_transform(features)  # Transform the feature set for visualization
 
-# PCA and plotting for vector-only clustering
-import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
+    return combined_reduced, kmeans_combined.labels_
 
-# PCA for dimensionality reduction
-pca = PCA(n_components=2)
-vectors_reduced = pca.fit_transform(vectors)
-combined_reduced = pca.transform(features)  # Ensure PCA is fitted only once and used for both
+# Perform clustering
+combined_reduced, kmeans_combined_labels = perform_clustering(data)
 
-# Setting up the figure and axes
-plt.figure(figsize=(20, 8))  # Wider figure to accommodate detailed labels
-
-# Plot for clustering based only on vectors
-plt.subplot(1, 2, 1)
-scatter1 = plt.scatter(vectors_reduced[:, 0], vectors_reduced[:, 1], c=kmeans_vectors.labels_, cmap='viridis', alpha=0.5)
-plt.colorbar(scatter1, label='Cluster Labels')
-plt.title('Clusters Formed Using Only Textual Content')
-plt.xlabel('Component 1: Capturing Main Variance in Text')
-plt.ylabel('Component 2: Capturing Secondary Variance in Text')
-
-# Plot for clustering based on vectors, polarity, and subjectivity
-plt.subplot(1, 2, 2)
-scatter2 = plt.scatter(combined_reduced[:, 0], combined_reduced[:, 1], c=kmeans_combined.labels_, cmap='viridis', alpha=0.5)
-plt.colorbar(scatter2, label='Cluster Labels')
-plt.title('Clusters Formed Using Textual Content with Sentiment Analysis')
-plt.xlabel('Component 1: Integrating Text and Sentiment Variance')
-plt.ylabel('Component 2: Secondary Variance from Combined Features')
-
-plt.suptitle('Comparative Visualization of Document Clustering With and Without Sentiment Features', fontsize=16)
-plt.tight_layout(rect=[0, 0.03, 1, 0.95])  # Adjust layout to leave space for the suptitle
+# Plotting the clusters
+# Vykreslení clusterů
+plt.figure(figsize=(10, 8))
+scatter2 = plt.scatter(combined_reduced[:, 0], combined_reduced[:, 1], c=kmeans_combined_labels, cmap='viridis', alpha=0.5)
+plt.colorbar(scatter2, label='Štítky clusterů (každá barva představuje jiný cluster)')
+plt.title('Clustery vytvořené na základě textového obsahu s analýzou sentimentu')
+plt.xlabel('Integrace rozptylu textu a sentimentu')
+plt.ylabel('Sekundární rozptyl z kombinovaných prvků')
+plt.savefig("Pinecone clustering")
 plt.show()
-
