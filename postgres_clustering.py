@@ -6,7 +6,9 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from scipy.spatial.distance import cdist
 import matplotlib.pyplot as plt
+from sklearn.metrics import calinski_harabasz_score
 from dotenv import load_dotenv
+import time
 
 # Load environment variables
 load_dotenv()
@@ -20,6 +22,7 @@ conn_params = {
 }
 
 # Connect to the PostgreSQL database
+start_time_query = time.time()  # Start measuring time for querying data
 conn = psycopg2.connect(**conn_params)
 cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
@@ -45,34 +48,29 @@ ids_list = [result['id'] for result in results]
 vectors = np.array([np.frombuffer(result['embedding'], dtype=np.float32) for result in results])
 polarity = np.array([result['polarity'] for result in results]).reshape(-1, 1)
 subjectivity = np.array([result['subjectivity'] for result in results]).reshape(-1, 1)
+end_time_vector_conversion = time.time()  # End measuring time for converting data to vectors
+print(f"Overall vector conversion time: {end_time_vector_conversion - start_time_query} seconds")
 
 # Combine vectors with polarity and subjectivity for clustering
 features = np.hstack((vectors, polarity, subjectivity))
 
-# Clustering with KMeans
-n_clusters = 5
-kmeans = KMeans(n_clusters=n_clusters, random_state=0)
-kmeans.fit(features)
-cluster_labels = kmeans.labels_
+# Define a range of cluster numbers to test
+cluster_numbers = range(2, 7)  # From 2 to 6 clusters
+calinski_scores = []
 
-# Dimensionality Reduction for visualization with PCA on the combined features
-pca = PCA(n_components=2)
-features_reduced = pca.fit_transform(features)
+# Evaluate Calinski-Harabasz Index for each number of clusters
+for n_clusters in cluster_numbers:
+    kmeans = KMeans(n_clusters=n_clusters, random_state=0)
+    cluster_labels = kmeans.fit_predict(features)
+    ch_score = calinski_harabasz_score(features, cluster_labels)
+    calinski_scores.append(ch_score)
+    print(f"Calinski-Harabasz Index for {n_clusters} clusters: {ch_score}")
 
-# Plotting the clusters with combined features
-plt.figure(figsize=(10, 8))
-scatter = plt.scatter(features_reduced[:, 0], features_reduced[:, 1], c=cluster_labels, cmap='viridis', alpha=0.5)
-plt.colorbar(scatter)
-plt.title('Cluster Visualization with Polarity and Subjectivity')
-plt.xlabel('PCA Component 1')
-plt.ylabel('PCA Component 2')
+# Plot Calinski-Harabasz Scores
+plt.figure(figsize=(10, 5))
+plt.plot(cluster_numbers, calinski_scores, marker='o')
+plt.xlabel('Počet clusterů')
+plt.ylabel('Calinski-Harabaszovo skóre')
+plt.title('Calinski-Harabaszovo skóre pro různé počty clusterů s dodatečnou informací')
+plt.savefig("C-H graf")
 plt.show()
-
-# Calculate distances from each vector to each centroid
-distances = cdist(features, kmeans.cluster_centers_, 'euclidean')
-closest_indices = np.argmin(distances, axis=0)
-
-# Print closest vector details
-for i, idx in enumerate(closest_indices):
-    vector_id = ids_list[idx]
-    print(f"Cluster {i+1}, Vector ID closest to centroid: {vector_id}")
