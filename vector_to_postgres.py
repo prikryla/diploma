@@ -1,5 +1,6 @@
 import pandas as pd
 import psycopg2
+import psycopg2.extras
 import numpy as np
 import os
 from dotenv import load_dotenv
@@ -23,31 +24,34 @@ model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 # Read CSV file for text data
 df = pd.read_csv('train_fixed.csv', delimiter=';')
 
+# Precompute embeddings for all descriptions
+embeddings = model.encode(df['description'].tolist(), convert_to_tensor=False)
+df['embedding'] = [e.astype(np.float32).tobytes() for e in embeddings]
+
+# Define the batch size
+batch_size = 1000  # Adjust batch size based on memory and database handling capacity
+
+# SQL insert statement
+insert_query = """
+    INSERT INTO ag_dataset_full (class_index, title, description, embedding) VALUES %s;
+"""
+
 # Connect to the PostgreSQL server using context managers
 with psycopg2.connect(**conn_params) as conn:
     with conn.cursor() as cursor:
-        # Start tracking time for ag_dataset
-        start_time_ag_dataset = time.time()
+        start_time = time.time()
 
-        for index, row in df.iterrows():
-            description = row['description']
+        # Batch insert data
+        for i in range(0, len(df), batch_size):
+            batch = [
+                (row['class_index'], row['title'], row['description'], row['embedding'])
+                for index, row in df.iloc[i:i+batch_size].iterrows()
+            ]
+            psycopg2.extras.execute_values(cursor, insert_query, batch, template=None, page_size=100)
 
-            # Generate embedding using Sentence Transformer
-            embedding = model.encode(description, convert_to_tensor=False)
-            binary_embedding = embedding.astype(np.float32).tobytes()
-
-            # Insert text data and embedding into ag_dataset
-            insert_query = """
-                INSERT INTO ag_dataset_full (class_index, title, description, embedding)
-                VALUES (%s, %s, %s, %s) RETURNING id
-            """
-            data = (row['class_index'], row['title'], row['description'], binary_embedding)
-            cursor.execute(insert_query, data)
-            cursor.fetchone()  # Fetch the ID, but don't use it for ag_dataset_sentiment insertion
-
-        # Calculate execution time for ag_dataset
-        end_time_ag_dataset = time.time()
-        execution_time_ag_dataset = end_time_ag_dataset - start_time_ag_dataset
-        print(f"Data upload completed for ag_dataset_full in {execution_time_ag_dataset} seconds.")
-
+        # Commit the transaction
         conn.commit()
+
+        # Calculate execution time
+        end_time = time.time()
+        print(f"Data upload completed in {end_time - start_time} seconds.")
