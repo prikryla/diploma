@@ -4,6 +4,7 @@ import numpy as np
 import os
 from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
+import time
 
 # Load the Sentence Transformer model
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
@@ -33,6 +34,9 @@ class_to_topic = {
     3: 'Business',
     4: 'Sci/Tech'
 }
+
+# Start tracking time for database query
+start_time = time.time()
 
 conn = psycopg2.connect(**conn_params)
 cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -65,9 +69,14 @@ for row in cur:
 cur.close()
 conn.close()
 
+# End tracking time for database query
+end_time = time.time()
+query_time = end_time - start_time
+print(f"Querying time: {query_time} seconds")
+
 # Sort results by similarity and get top 5
 results.sort(key=lambda x: x[4], reverse=True)  # sort by similarity in descending order
-top_5_results = results[:5]
+top_5_results = results[:10]
 
 # Display the top 5 results with better formatting
 print("Top 5 Similar Entries:")

@@ -34,7 +34,7 @@ if index_name not in pc.list_indexes().names():
 index = pc.Index(index_name)
 
 # Encode the query text
-query_text = "WTA tennis tournament"
+query_text = "Technology company released new software"
 query_embedding = model.encode(query_text, convert_to_tensor=True).tolist()
 
 start_time = time.time()
@@ -42,7 +42,7 @@ start_time = time.time()
 # Perform semantic search
 results = index.query(
     vector=[query_embedding],
-    top_k=5,
+    top_k=10,
     include_metadata=True
 )
 
@@ -58,6 +58,7 @@ for result in results['matches']:
     search_results.append({'id': idx, 'description': description, 'similarity': similarity, 'topic': topic})
 
 print(f"Query time - {end_time - start_time} seconds")
+
 # Print the search results
 print("Search results for query:", query_text)
 for result in search_results:

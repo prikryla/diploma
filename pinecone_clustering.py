@@ -8,6 +8,7 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 import time
 from concurrent.futures import ThreadPoolExecutor
+from matplotlib.colors import ListedColormap, BoundaryNorm
 
 # Load environment variables
 load_dotenv()
@@ -59,7 +60,7 @@ def perform_clustering(data):
     subjectivity = np.expand_dims(data['subjectivity'], axis=1)
     features = np.hstack((vectors, polarity, subjectivity))  # Combine vectors with polarity and subjectivity
 
-    n_clusters = 3  # Specify the number of clusters
+    n_clusters = 4  # Specify the number of clusters
     kmeans_combined = KMeans(n_clusters=n_clusters, random_state=0)
     kmeans_combined.fit(features)  # Clustering with combined features
 
@@ -72,13 +73,14 @@ def perform_clustering(data):
 # Perform clustering
 combined_reduced, kmeans_combined_labels = perform_clustering(data)
 
-# Plotting the clusters
-# Vykreslení clusterů
 plt.figure(figsize=(10, 8))
-scatter2 = plt.scatter(combined_reduced[:, 0], combined_reduced[:, 1], c=kmeans_combined_labels, cmap='viridis', alpha=0.5)
-plt.colorbar(scatter2, label='Štítky clusterů (každá barva představuje jiný cluster)')
-plt.title('Clustery vytvořené na základě textového obsahu s analýzou sentimentu')
-plt.xlabel('Integrace rozptylu textu a sentimentu')
-plt.ylabel('Sekundární rozptyl z kombinovaných prvků')
-plt.savefig("Pinecone clustering")
+cmap = ListedColormap(['#e41a1c', '#377eb8', '#4daf4a', '#ff7f00'])  # Red, Blue, Green, Orange
+norm = BoundaryNorm(np.arange(0, 4+1), cmap.N)
+
+scatter2 = plt.scatter(combined_reduced[:, 0], combined_reduced[:, 1], c=kmeans_combined_labels, cmap=cmap, norm=norm, alpha=0.5)
+cbar = plt.colorbar(scatter2, label='Označení shluků')
+plt.title('Shluky vytvořené na základě shlukování s dodatečnou informací s databází Pinecone')
+plt.xlabel('Osa X - první komponenta')
+plt.ylabel('Osa Y - druhá komponenta')
+plt.savefig("Pinecone clustering.png")
 plt.show()

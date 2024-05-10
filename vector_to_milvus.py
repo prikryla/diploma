@@ -17,7 +17,7 @@ TOKEN = token
 client = MilvusClient(uri=CLUSTER_ENDPOINT, token=TOKEN)
 
 # Check if the collection exists
-collection_name = "agdataset"
+collection_name = "clusteringenriched"
 if not client.has_collection(collection_name):
     # Create the collection if it does not exist
     client.create_collection(
@@ -30,7 +30,7 @@ else:
     print(f"Collection '{collection_name}' already exists.")
 
 # Load data from CSV
-data = pd.read_csv("test_bez_upravy.csv", delimiter=';')
+data = pd.read_csv("enriched.csv", delimiter=',')
 
 # Initialize the Sentence Transformer model
 model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -49,9 +49,9 @@ to_insert = [
         "vector": row['vector'],
         "topic": row['topic'],
         "title": row['title'],
-        "description": row['description'][:1024]
-        # "polarity": row['polarity'],
-        # "subjectivity": row['subjectivity']
+        "description": row['description'][:1024],
+        "polarity": row['polarity'],
+        "subjectivity": row['subjectivity']
     }
     for index, row in data.iterrows()
 ]
