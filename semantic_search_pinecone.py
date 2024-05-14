@@ -34,7 +34,7 @@ if index_name not in pc.list_indexes().names():
 index = pc.Index(index_name)
 
 # Encode the query text
-query_text = "Technology company released new software"
+query_text = "Innovative technologies reshape sports and international business practices"
 query_embedding = model.encode(query_text, convert_to_tensor=True).tolist()
 
 start_time = time.time()
@@ -54,12 +54,16 @@ for result in results['matches']:
     idx = int(result['id'])
     description = result['metadata'].get('description', 'No description available')
     similarity = result['score']
+    title = result['metadata'].get('title', 'No title available')  # Corrected retrieval of title
     topic = result['metadata'].get('topic', 'Unknown')
-    search_results.append({'id': idx, 'description': description, 'similarity': similarity, 'topic': topic})
+    search_results.append({
+        'id': idx, 'title': title, 'description': description, 
+        'similarity': similarity, 'topic': topic
+    })
 
 print(f"Query time - {end_time - start_time} seconds")
 
 # Print the search results
 print("Search results for query:", query_text)
 for result in search_results:
-    print(f"ID: {result['id']}\nDescription: {result['description']}\nTopic: {result['topic']}\nSimilarity: {result['similarity']}\n")
+    print(f"ID: {result['id']}\nTitle: {result['title']}\nDescription: {result['description']}\nTopic: {result['topic']}\nSimilarity: {result['similarity']}\n")

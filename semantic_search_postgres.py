@@ -10,7 +10,7 @@ import time
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
 # Compute the query vector
-search_query = "Technology company released new software"
+search_query = "WTA tennis tournament"
 query_vector = model.encode(search_query)
 
 # Function to compute cosine similarity
@@ -76,7 +76,7 @@ print(f"Querying time: {query_time} seconds")
 
 # Sort results by similarity and get top 5
 results.sort(key=lambda x: x[4], reverse=True)  # sort by similarity in descending order
-top_5_results = results[:10]
+top_5_results = results[:5]
 
 # Display the top 5 results with better formatting
 print("Top 5 Similar Entries:")
