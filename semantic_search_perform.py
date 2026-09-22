@@ -7,7 +7,7 @@ model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
 # Initialize Pinecone client
 pc = Pinecone(
-    api_key="eeb95b42-5012-4301-854b-7d75ae9fd293"  # Replace with your actual API key
+    api_key="<API-KEY>"  # Replace with your actual API key
 )
 
 # Define the index parameters
